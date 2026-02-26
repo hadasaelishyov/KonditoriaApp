@@ -1,0 +1,35 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
+          script: |
+            set -e
+
+            cd ~/KonditoriaApp
+            git pull origin main
+
+            # Frontend (Vite)
+            cd react
+            npm ci
+            npm run build
+            sudo rm -rf /var/www/html/*
+            sudo cp -r dist/* /var/www/html/
+
+            # Backend
+            cd ../node.js
+            npm ci
+            sudo systemctl restart konditoria-api
+            sudo systemctl status konditoria-api --no-pager
